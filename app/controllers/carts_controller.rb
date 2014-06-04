@@ -1,5 +1,8 @@
 class CartsController < ApplicationController
   before_action :set_cart, only: [:show, :edit, :update, :destroy]
+  #Intercepta el error generado por Cart.find cuando no existe el ID.
+  # y responde con el metodo privado invalid_cart.
+  rescue_from ActiveRecord::RecordNotFound, with: :invalid_cart
 
   # GET /carts
   # GET /carts.json
@@ -54,14 +57,23 @@ class CartsController < ApplicationController
   # DELETE /carts/1
   # DELETE /carts/1.json
   def destroy
-    @cart.destroy
+    @cart.destroy if @cart.id == session[:cart_id]
+    session[:cart_id] = nil
     respond_to do |format|
-      format.html { redirect_to carts_url, notice: 'Cart was successfully destroyed.' }
+      format.html { redirect_to store_url,
+                    notice: 'Your cart is currently empty.' }
       format.json { head :no_content }
     end
   end
 
   private
+
+    #Registra el error en el log y muestra un mensaje de error al usuario
+    def invalid_cart
+      logger.error "Attemp to access invalid cart #{params[:id]}"
+      redirect_to store_url, notice: "Invalid cart"
+    end
+
     # Use callbacks to share common setup or constraints between actions.
     def set_cart
       @cart = Cart.find(params[:id])
